@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verita School Eco Team — Recycling Dashboard</title>
+  <meta name="description" content="Real-time recycling data dashboard for Verita School's Eco Team. Track paper, plastic, glass, metal, and organic recycling by class." />
+
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+
+  <!-- Loading Screen -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <p class="loading-text">Loading recycling data…</p>
+  </div>
+
+  <div class="dashboard">
+
+    <!-- ===== HEADER ===== -->
+    <header class="header">
+      <div class="header__brand">
+        <div class="header__icon">♻️</div>
+        <div>
+          <h1 class="header__title">Verita Eco Dashboard</h1>
+          <p class="header__subtitle">Powered by the Eco Team</p>
+        </div>
+      </div>
+      <div class="header__actions">
+        <div class="header__status" id="connectionStatus">
+          <span class="header__status-dot disconnected" id="statusDot"></span>
+          <span id="statusText">No sheet connected</span>
+        </div>
+        <button class="btn btn--ghost" id="refreshBtn" title="Refresh data">
+          🔄 Refresh
+        </button>
+        <button class="btn btn--primary" id="settingsBtn" title="Connect Google Sheet">
+          ⚙️ Settings
+        </button>
+      </div>
+    </header>
+
+    <!-- ===== CONNECTION BANNER ===== -->
+    <div class="connection-banner visible" id="connectionBanner">
+      <p class="connection-banner__title">📋 Connect Your Google Sheet</p>
+      <p class="connection-banner__text">
+        Click <strong>Settings</strong> to paste your Google Sheet ID and start displaying live recycling data.<br />
+        The dashboard will show demo data until a sheet is connected.
+      </p>
+      <button class="btn btn--primary" id="bannerSettingsBtn">⚙️ Connect Sheet</button>
+    </div>
+
+    <!-- ===== STATS OVERVIEW ===== -->
+    <section aria-label="Recycling Statistics">
+      <div class="stats-grid">
+        <div class="stat-card fade-in" id="statTotal">
+          <div class="stat-card__header">
+            <div class="stat-card__icon stat-card__icon--green">♻️</div>
+            <span class="stat-card__trend stat-card__trend--up" id="trendTotal">—</span>
+          </div>
+          <div class="stat-card__value" id="valueTotal">0</div>
+          <div class="stat-card__label">Total Recycled (kg)</div>
+        </div>
+
+        <div class="stat-card fade-in" id="statMonth">
+          <div class="stat-card__header">
+            <div class="stat-card__icon stat-card__icon--blue">📅</div>
+            <span class="stat-card__trend stat-card__trend--up" id="trendMonth">—</span>
+          </div>
+          <div class="stat-card__value" id="valueMonth">0</div>
+          <div class="stat-card__label">This Month (kg)</div>
+        </div>
+
+        <div class="stat-card fade-in" id="statCO2">
+          <div class="stat-card__header">
+            <div class="stat-card__icon stat-card__icon--amber">🌍</div>
+          </div>
+          <div class="stat-card__value" id="valueCO2">0</div>
+          <div class="stat-card__label">CO₂ Saved (kg est.)</div>
+        </div>
+
+        <div class="stat-card fade-in" id="statClasses">
+          <div class="stat-card__header">
+            <div class="stat-card__icon stat-card__icon--rose">🏫</div>
+          </div>
+          <div class="stat-card__value" id="valueClasses">0</div>
+          <div class="stat-card__label">Classes Participating</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CHARTS ===== -->
+    <section aria-label="Charts">
+      <div class="charts-grid">
+        <!-- Trend Chart -->
+        <div class="chart-card fade-in">
+          <div class="chart-card__header">
+            <div>
+              <div class="chart-card__title">Paper Recycling Trends</div>
+              <div class="chart-card__subtitle">Weekly totals (kg)</div>
+            </div>
+            <div class="chart-card__filter">
+              <button class="chart-card__filter-btn active" data-period="weekly">Weekly</button>
+              <button class="chart-card__filter-btn" data-period="monthly">Monthly</button>
+            </div>
+          </div>
+          <div class="chart-container chart-container--trend">
+            <canvas id="trendChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== LEADERBOARD + GOAL ===== -->
+    <section aria-label="Leaderboard and Goals">
+      <div class="bottom-grid">
+        <!-- Leaderboard -->
+        <div class="leaderboard fade-in">
+          <div class="leaderboard__header">
+            <h2 class="leaderboard__title">🏆 Class Leaderboard</h2>
+          </div>
+          <ol class="leaderboard__list" id="leaderboardList">
+            <!-- Populated by JS -->
+          </ol>
+        </div>
+
+        <!-- Goal Tracker -->
+        <div class="goal-tracker fade-in">
+          <div class="goal-tracker__header">
+            <h2 class="goal-tracker__title">🎯 School Goal</h2>
+          </div>
+          <div class="goal-tracker__main">
+            <div class="goal-ring">
+              <svg class="goal-ring__svg" viewBox="0 0 140 140">
+                <defs>
+                  <linearGradient id="goalGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#10b981" />
+                    <stop offset="100%" stop-color="#34d399" />
+                  </linearGradient>
+                </defs>
+                <circle class="goal-ring__bg" cx="70" cy="70" r="60" />
+                <circle class="goal-ring__progress" id="goalRingProgress" cx="70" cy="70" r="60"
+                  stroke-dasharray="376.99"
+                  stroke-dashoffset="376.99" />
+              </svg>
+              <div class="goal-ring__text">
+                <div class="goal-ring__percent" id="goalPercent">0%</div>
+                <div class="goal-ring__label">of goal</div>
+              </div>
+            </div>
+
+            <div class="goal-info">
+              <div class="goal-info__row">
+                <span class="goal-info__label">Current Total</span>
+                <span class="goal-info__value" id="goalCurrent">0 kg</span>
+              </div>
+              <div class="goal-info__row">
+                <span class="goal-info__label">School Goal</span>
+                <span class="goal-info__value" id="goalTarget">500 kg</span>
+              </div>
+              <div class="goal-info__row">
+                <span class="goal-info__label">Remaining</span>
+                <span class="goal-info__value" id="goalRemaining">500 kg</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="footer">
+      <p class="footer__text">
+        Made with <span class="footer__heart">💚</span> by the Verita School Eco Team · Data powered by Google Sheets
+      </p>
+    </footer>
+  </div>
+
+  <!-- ===== SETTINGS MODAL ===== -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal">
+      <h2 class="modal__title">⚙️ Dashboard Settings</h2>
+      <p class="modal__description">
+        Connect your Google Sheet to display live recycling data. The sheet must be shared as
+        <strong>"Anyone with the link can view"</strong>.
+      </p>
+
+      <div class="modal__field">
+        <label class="modal__label" for="sheetIdInput">Google Sheet ID</label>
+        <input
+          class="modal__input"
+          id="sheetIdInput"
+          type="text"
+          placeholder="e.g. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms"
+        />
+        <p class="modal__hint">
+          Find it in your sheet URL: docs.google.com/spreadsheets/d/<strong>[THIS PART]</strong>/edit
+        </p>
+      </div>
+
+      <div class="modal__field">
+        <label class="modal__label" for="sheetNameInput">Sheet Tab Name</label>
+        <input
+          class="modal__input"
+          id="sheetNameInput"
+          type="text"
+          placeholder="Sheet1"
+          value="Sheet1"
+        />
+        <p class="modal__hint">
+          The name of the tab at the bottom of your Google Sheet (default: Sheet1).
+        </p>
+      </div>
+
+      <div class="modal__field">
+        <label class="modal__label" for="goalInput">School Recycling Goal (kg)</label>
+        <input
+          class="modal__input"
+          id="goalInput"
+          type="number"
+          placeholder="500"
+          value="500"
+        />
+      </div>
+
+      <div class="modal__status" id="modalStatus"></div>
+
+      <div class="modal__actions">
+        <button class="btn btn--ghost" id="modalCancelBtn">Cancel</button>
+        <button class="btn btn--ghost" id="modalTestBtn">🔗 Test Connection</button>
+        <button class="btn btn--primary" id="modalSaveBtn">💾 Save & Load</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
