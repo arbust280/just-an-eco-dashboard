@@ -4,9 +4,8 @@ A real-time recycling data dashboard powered by Google Sheets.
 
 ## Quick Start
 
-1. Open the Github Pages app for this dashboard.
-2. https://arbust280.github.io/just-an-eco-dashboard/
-3. To connect your own data, click **⚙️ Settings** and paste your Google Sheet ID
+1. Open the [Github Pages app]( https://arbust280.github.io/just-an-eco-dashboard/) for this dashboard.
+2. To connect your own data, click **⚙️ Settings** and paste your Google Sheet ID
 
 ## Google Sheet Setup
 
@@ -72,4 +71,4 @@ The Sheet ID is the long string between `/d/` and `/edit`:
 
 - Feel free to create an issue if you need help setting up the dashboard for your school.
 
-## an arbust engineering app
+- an arbust engineering app :) 

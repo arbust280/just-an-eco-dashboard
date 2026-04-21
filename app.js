@@ -46,6 +46,15 @@
     goalCurrent: $('#goalCurrent'),
     goalTarget: $('#goalTarget'),
     goalRemaining: $('#goalRemaining'),
+    // Display mode
+    displayMode: $('#displayMode'),
+    displayModeBtn: $('#displayModeBtn'),
+    displayModeExitBtn: $('#displayModeExitBtn'),
+    displayStatsGrid: $('#displayStatsGrid'),
+    displayTopClasses: $('#displayTopClasses'),
+    displayWeeklyHighlights: $('#displayWeeklyHighlights'),
+    displayInsight: $('#displayInsight'),
+    displayLastUpdated: $('#displayLastUpdated'),
     // Modal
     modal: $('#settingsModal'),
     sheetIdInput: $('#sheetIdInput'),
@@ -341,6 +350,135 @@
     dom.goalRemaining.textContent = `${Math.max(0, +(goal - totalAll).toFixed(1))} kg`;
   }
 
+  function getPeriodTotals(data, period) {
+    const grouped = {};
+    for (const row of data) {
+      const d = new Date(row.Date);
+      if (Number.isNaN(d.getTime())) continue;
+      let key;
+      if (period === 'week') {
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(d);
+        monday.setDate(diff);
+        key = monday.toISOString().split('T')[0];
+      } else {
+        key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      }
+      grouped[key] = (grouped[key] || 0) + (row.Paper || 0);
+    }
+    return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+  }
+
+  function buildDisplaySummary(stats, data) {
+    const monthSeries = getPeriodTotals(data, 'month');
+    const weekSeries = getPeriodTotals(data, 'week');
+    const latestMonth = monthSeries[monthSeries.length - 1]?.[1] || 0;
+    const previousMonth = monthSeries[monthSeries.length - 2]?.[1] || 0;
+    const latestWeek = weekSeries[weekSeries.length - 1]?.[1] || 0;
+    const bestWeekEntry = [...weekSeries].sort((a, b) => b[1] - a[1])[0];
+
+    const totalWeeks = weekSeries.length || 1;
+    const avgPerWeek = stats.totalAll / totalWeeks;
+    const totalClasses = stats.classCount || 1;
+    const avgPerClass = stats.totalAll / totalClasses;
+    const goal = getGoal();
+    const remaining = Math.max(0, goal - stats.totalAll);
+    const estimatedWeeksToGoal = avgPerWeek > 0 ? Math.ceil(remaining / avgPerWeek) : null;
+
+    const topClasses = stats.leaderboard.slice(0, 7);
+    const topThree = stats.leaderboard.slice(0, 3).reduce((sum, item) => sum + item.total, 0);
+    const topThreeShare = stats.totalAll > 0 ? (topThree / stats.totalAll) * 100 : 0;
+
+    return {
+      keyStats: [
+        { label: 'Total Recycled', value: `${stats.totalAll.toFixed(1)} kg` },
+        { label: 'This Month', value: `${stats.totalThisMonth.toFixed(1)} kg` },
+        { label: 'This Week', value: `${latestWeek.toFixed(1)} kg` },
+        { label: 'CO2 Saved', value: `${stats.co2Saved.toFixed(1)} kg` },
+        { label: 'Classes Active', value: `${stats.classCount}` },
+      ],
+      weeklyHighlights: [
+        {
+          label: 'Best Week',
+          value: bestWeekEntry
+            ? `${new Date(bestWeekEntry[0]).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} · ${bestWeekEntry[1].toFixed(1)} kg`
+            : 'Not enough data yet',
+        },
+        {
+          label: 'Average Per Week',
+          value: `${avgPerWeek.toFixed(1)} kg`,
+        },
+        {
+          label: 'Average Per Class',
+          value: `${avgPerClass.toFixed(1)} kg`,
+        },
+        {
+          label: 'Last Month vs Previous',
+          value: `${latestMonth.toFixed(1)} kg vs ${previousMonth.toFixed(1)} kg`,
+        },
+        {
+          label: 'Top 3 Class Share',
+          value: `${topThreeShare.toFixed(1)}% of total`,
+        },
+        {
+          label: 'Estimated Time To Goal',
+          value: remaining <= 0
+            ? 'Goal reached'
+            : estimatedWeeksToGoal
+              ? `${estimatedWeeksToGoal} weeks at current pace`
+              : 'Not enough data yet',
+        },
+      ],
+      topClasses,
+      insight: remaining <= 0
+        ? 'Amazing work: the school has reached its recycling goal.'
+        : `${remaining.toFixed(1)} kg to go. Keep classes motivated with weekly collection challenges.`,
+    };
+  }
+
+  function renderDisplayMode(stats, data) {
+    if (!dom.displayMode) return;
+    const summary = buildDisplaySummary(stats, data);
+
+    dom.displayStatsGrid.innerHTML = summary.keyStats.map((item) => `
+      <article class="display-stat">
+        <div class="display-stat__label">${item.label}</div>
+        <div class="display-stat__value">${item.value}</div>
+      </article>
+    `).join('');
+
+    dom.displayTopClasses.innerHTML = summary.topClasses.map((entry, i) => `
+      <li class="display-panel__row">
+        <span class="display-panel__rank">${i + 1}</span>
+        <span class="display-panel__name">${entry.name}</span>
+        <span class="display-panel__value">${entry.total.toFixed(1)} kg</span>
+      </li>
+    `).join('');
+
+    dom.displayWeeklyHighlights.innerHTML = summary.weeklyHighlights.map((item) => `
+      <div class="display-metric">
+        <div class="display-metric__label">${item.label}</div>
+        <div class="display-metric__value">${item.value}</div>
+      </div>
+    `).join('');
+
+    dom.displayInsight.textContent = summary.insight;
+    dom.displayLastUpdated.textContent = `Updated ${new Date().toLocaleString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    })}`;
+  }
+
+  function setDisplayMode(active) {
+    if (!dom.displayMode || !dom.displayModeBtn) return;
+    dom.displayMode.classList.toggle('active', active);
+    dom.displayModeBtn.textContent = active ? '📊 Back to Dashboard' : '🖥️ Display Mode';
+    dom.displayModeBtn.setAttribute('title', active ? 'Back to dashboard view' : 'Switch to display mode');
+  }
+
   // ——————————————————————————
   //  SETTINGS / LOCALSTORAGE
   // ——————————————————————————
@@ -398,6 +536,7 @@
     renderTrendChart(rawData);
     renderLeaderboard(stats.leaderboard);
     renderGoal(stats.totalAll);
+    renderDisplayMode(stats, rawData);
 
     // Hide loading
     setTimeout(() => dom.loading.classList.add('hidden'), 400);
@@ -446,6 +585,13 @@
     // Refresh
     $('#refreshBtn').addEventListener('click', () => loadData());
 
+    // Display mode toggle
+    dom.displayModeBtn?.addEventListener('click', () => {
+      const active = dom.displayMode.classList.contains('active');
+      setDisplayMode(!active);
+    });
+    dom.displayModeExitBtn?.addEventListener('click', () => setDisplayMode(false));
+
     // Chart period filter
     $$('.chart-card__filter-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -458,7 +604,10 @@
 
     // Keyboard: Escape to close modal
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeModal();
+      if (e.key === 'Escape') {
+        closeModal();
+        setDisplayMode(false);
+      }
     });
   }
 

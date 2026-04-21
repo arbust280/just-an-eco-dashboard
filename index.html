@@ -179,6 +179,39 @@
     </footer>
   </div>
 
+  <button class="display-toggle-btn" id="displayModeBtn" title="Switch to display mode">
+    🖥️ Display Mode
+  </button>
+
+  <div class="display-mode" id="displayMode">
+    <div class="display-mode__header">
+      <div>
+        <h2 class="display-mode__title">Verita School Recycling Impact</h2>
+        <p class="display-mode__subtitle">Live entrance monitor summary</p>
+      </div>
+      <button class="btn btn--ghost display-mode__exit" id="displayModeExitBtn">Exit Display</button>
+    </div>
+
+    <div class="display-mode__stats" id="displayStatsGrid"></div>
+
+    <div class="display-mode__main">
+      <section class="display-panel">
+        <h3 class="display-panel__title">Top Performing Classes</h3>
+        <ol class="display-panel__list" id="displayTopClasses"></ol>
+      </section>
+
+      <section class="display-panel">
+        <h3 class="display-panel__title">Weekly Highlights</h3>
+        <div class="display-panel__metrics" id="displayWeeklyHighlights"></div>
+      </section>
+    </div>
+
+    <div class="display-mode__footer">
+      <div class="display-mode__insight" id="displayInsight"></div>
+      <div class="display-mode__stamp" id="displayLastUpdated"></div>
+    </div>
+  </div>
+
   <!-- ===== SETTINGS MODAL ===== -->
   <div class="modal-overlay" id="settingsModal">
     <div class="modal">
